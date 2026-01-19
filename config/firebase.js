@@ -1,11 +1,22 @@
 const admin = require('firebase-admin');
 
 let serviceAccount;
-try {
-  // Check in parent directory (backend root)
-  serviceAccount = require('../serviceAccountKey.json');
-} catch (error) {
-  console.warn("⚠️  WARNING: serviceAccountKey.json not found in backend root. Firebase Admin is running in MOCK MODE.");
+// Try to get service account from Env Var (Production/Vercel)
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT env var', e);
+  }
+} 
+// Try to get from file (Local)
+else {
+  try {
+    // Check in parent directory (backend root)
+    serviceAccount = require('../serviceAccountKey.json');
+  } catch (error) {
+    console.warn("⚠️  WARNING: serviceAccountKey.json not found in backend root. Firebase Admin is running in MOCK MODE.");
+  }
 }
 
 if (serviceAccount) {
