@@ -1,9 +1,11 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
   createCourse,
   createSubject,
   getAllSubjects,
+  updateSubject,
+  deleteSubject,
   createVideo,
   getDashboardStats,
   getAllCourses,
@@ -14,31 +16,32 @@ const {
   deleteVideo,
   getAllUsers,
   updateUserRole,
-} = require('../controllers/adminController');
-const { protect, verifyAdmin } = require('../middleware/authMiddleware');
-
+} = require("../controllers/adminController");
+const { protect, verifyAdmin } = require("../middleware/authMiddleware");
 
 // Protect all routes
 router.use(protect);
 router.use(verifyAdmin);
 
-router.get('/stats', getDashboardStats);
+router.get("/stats", getDashboardStats);
 
-router.post('/course', createCourse);
-router.get('/courses', getAllCourses);
-router.put('/course/:id', updateCourse);
-router.delete('/course/:id', deleteCourse);
+router.post("/course", createCourse);
+router.get("/courses", getAllCourses);
+router.put("/course/:id", updateCourse);
+router.delete("/course/:id", deleteCourse);
 
 // @route   POST /api/admin/subject
-router.post('/subject', createSubject);
-router.get('/subjects', getAllSubjects);
+router.post("/subject", createSubject);
+router.get("/subjects", getAllSubjects);
+router.put("/subject/:id", updateSubject);
+router.delete("/subject/:id", deleteSubject);
 
-router.post('/video', createVideo);
-router.get('/videos', getAllVideos);
-router.put('/video/:id', updateVideo);
-router.delete('/video/:id', deleteVideo);
+router.post("/video", createVideo);
+router.get("/videos", getAllVideos);
+router.put("/video/:id", updateVideo);
+router.delete("/video/:id", deleteVideo);
 
-router.get('/users', getAllUsers);
-router.put('/user/:id/role', updateUserRole);
+router.get("/users", getAllUsers);
+router.put("/user/:id/role", updateUserRole);
 
 module.exports = router;

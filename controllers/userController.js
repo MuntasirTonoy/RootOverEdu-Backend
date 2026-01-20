@@ -1,43 +1,95 @@
-const Course = require('../models/Course');
-const Subject = require('../models/Subject');
-const Video = require('../models/Video');
-const User = require('../models/User');
+const Course = require("../models/Course");
+const Subject = require("../models/Subject");
+const Video = require("../models/Video");
+const User = require("../models/User");
 
+// @desc    Get all courses
+// @route   GET /api/courses
+// @access  Public
 // @desc    Get all courses
 // @route   GET /api/courses
 // @access  Public
 const getCourses = async (req, res) => {
   try {
-    const courses = await Course.find();
+    const rawCourses = await Course.find().populate("subjects.subjectId");
+
+    // Transform to include code from populated subject
+    const courses = rawCourses.map((course) => {
+      const obj = course.toObject();
+      obj.subjects = (obj.subjects || []).map((s) => ({
+        ...s,
+        code: s.subjectId ? s.subjectId.code : "N/A",
+        // If title/price missing in embedded, fallback to subject doc?
+        // The embedded is the "override", so we keep it.
+        // But if embedded title is empty? We usually require it.
+      }));
+      return obj;
+    });
+
     res.status(200).json(courses);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
 // @desc    Get single course and its subjects
 // @route   GET /api/courses/:id
 // @access  Public
+// @desc    Get single course and its subjects
+// @route   GET /api/courses/:id
+// @access  Public
 const getCourse = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id);
+    const course = await Course.findById(req.params.id).populate(
+      "subjects.subjectId",
+    );
     if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
+      return res.status(404).json({ message: "Course not found" });
     }
-    
-    // Get subjects for this course
-    const subjects = await Subject.find({ courseId: course._id });
+
+    let subjects = [];
+
+    // Protocol 1: New "Bundle" Style (Embedded Array)
+    if (course.subjects && course.subjects.length > 0) {
+      subjects = course.subjects.map((item) => {
+        // item is { subjectId: {...full subject doc}, title, originalPrice, offerPrice, _id }
+        const subjectDetails = item.subjectId || {}; // content form populated doc
+        return {
+          _id: subjectDetails._id || item._id, // Use validated ID
+          title: item.title || subjectDetails.title,
+          code: subjectDetails.code,
+          department: subjectDetails.department,
+          yearLevel: subjectDetails.yearLevel,
+          originalPrice: item.originalPrice ?? subjectDetails.originalPrice,
+          offerPrice: item.offerPrice ?? subjectDetails.offerPrice,
+          description:
+            subjectDetails.description || "Comprehensive subject module",
+          courseId: course._id,
+        };
+      });
+    }
+
+    // Protocol 2: Legacy Style (Foreign Key in Subject)
+    // If no embedded subjects, check if there are subjects pointing to this course
+    if (subjects.length === 0) {
+      const legacySubjects = await Subject.find({ courseId: course._id });
+      subjects = legacySubjects;
+    }
 
     // Return combined data
     res.status(200).json({
       ...course.toObject(),
-      subjects
+      subjects,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    console.error(error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
+// @desc    Get subject details (including prices)
+// @route   GET /api/subjects/:id
+// @access  Public
 // @desc    Get subject details (including prices)
 // @route   GET /api/subjects/:id
 // @access  Public
@@ -45,11 +97,16 @@ const getSubject = async (req, res) => {
   try {
     const subject = await Subject.findById(req.params.id);
     if (!subject) {
-      return res.status(404).json({ message: 'Subject not found' });
+      return res.status(404).json({ message: "Subject not found" });
     }
     res.status(200).json(subject);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    if (error.name === "CastError") {
+      return res
+        .status(404)
+        .json({ message: "Subject not found (Invalid ID)" });
+    }
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -62,7 +119,7 @@ const getVideos = async (req, res) => {
   try {
     const subject = await Subject.findById(subjectId);
     if (!subject) {
-      return res.status(404).json({ message: 'Subject not found' });
+      return res.status(404).json({ message: "Subject not found" });
     }
 
     // Get all videos for the subject
@@ -71,42 +128,61 @@ const getVideos = async (req, res) => {
     // Filter videos: Allow if isFree OR user purchased the subject
     // Note: req.user is set by 'protect' middleware
     const user = req.user;
-    
+
     // Check if user has purchased the subject
     // Ensure both are strings for comparison or ObjectIds.
     // user.purchasedSubjects is an array of ObjectIds.
     const hasPurchased = user.purchasedSubjects.some(
-      (id) => id.toString() === subjectId
+      (id) => id.toString() === subjectId,
     );
 
-    if (hasPurchased) {
+    if (hasPurchased || user.role === "admin") {
       // Return all videos if purchased
       return res.status(200).json(videos);
-    } 
+    }
 
     // Filter only free videos if not purchased
-    // Actually, the prompt says "Only allow if isFree: true OR if the user has this subjectId...".
-    // This implies if I request the list, I should see what I am allowed to see? 
-    // Or does it mean the endpoint itself is protected and I can't even see the LIST?
-    // "GET /api/videos/:subjectId: Protected (Only allow if isFree: true OR if the user has this subjectId...)"
-    // It's ambiguous. Usually you return the list but some URLs might be hidden or blocked. 
-    // BUT the requirement says "Protected (Only allow if ...)" suggesting access control mechanism.
-    // However, if there are free videos in the subject, a non-purchaser SHOULD be able to see them.
-    // So I will return the list of videos BUT filter them based on access?
-    // OR does it mean I request a specific video? No, it says /videos/:subjectId (plural), so it matches a list.
-    
-    // I will return ONLY the videos the user is allowed to see.
-    const allowedVideos = videos.filter(video => video.isFree);
-    
-    // If user has not purchased and there are no free videos, they might get an empty list, 
-    // OR we could throw 403 if they strictly want access to the premium ones, but this is a list endpoint.
-    // I will return the allowed videos (free ones).
-    // If the requirement meant "Access to the page of videos", then if there is at least one free video, they can access the page.
-    
-    res.status(200).json(allowedVideos);
+    const allowedVideos = videos.filter((video) => video.isFree);
 
+    res.status(200).json(allowedVideos);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    if (error.name === "CastError") {
+      return res
+        .status(404)
+        .json({ message: "Subject not found (Invalid ID)" });
+    }
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Purchase subjects (Test Mode)
+// @route   POST /api/purchase
+// @access  Private
+const purchaseSubjects = async (req, res) => {
+  const { subjectIds } = req.body;
+  const userId = req.user._id;
+
+  if (!subjectIds || !Array.isArray(subjectIds) || subjectIds.length === 0) {
+    return res.status(400).json({ message: "No subjects selected" });
+  }
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Add unique subject IDs to purchasedSubjects
+    // Using $addToSet to prevent duplicates
+    await User.updateOne(
+      { _id: userId },
+      { $addToSet: { purchasedSubjects: { $each: subjectIds } } },
+    );
+
+    res.status(200).json({ message: "Purchase successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -115,4 +191,5 @@ module.exports = {
   getCourse,
   getSubject,
   getVideos,
+  purchaseSubjects,
 };
