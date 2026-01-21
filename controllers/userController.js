@@ -132,12 +132,17 @@ const getVideos = async (req, res) => {
     // Check if user has purchased the subject
     // Ensure both are strings for comparison or ObjectIds.
     // user.purchasedSubjects is an array of ObjectIds.
-    const hasPurchased = user.purchasedSubjects.some(
+    const hasPurchased = (user.purchasedSubjects || []).some(
       (id) => id.toString() === subjectId,
+    );
+
+    console.log(
+      `getVideos: User ${user.email} Role: ${user.role} Subject: ${subjectId} Purchased: ${hasPurchased}`,
     );
 
     if (hasPurchased || user.role === "admin") {
       // Return all videos if purchased
+      console.log(`Returning all ${videos.length} videos (Admin/Purchased)`);
       return res.status(200).json(videos);
     }
 
@@ -186,10 +191,74 @@ const purchaseSubjects = async (req, res) => {
   }
 };
 
+const toggleSavedVideo = async (req, res) => {
+  const { videoId } = req.body;
+  const userId = req.user._id;
+
+  if (!videoId) {
+    return res.status(400).json({ message: "Video ID is required" });
+  }
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isSaved = user.savedVideos.includes(videoId);
+
+    if (isSaved) {
+      // Unsave
+      await User.updateOne(
+        { _id: userId },
+        { $pull: { savedVideos: videoId } },
+      );
+      res
+        .status(200)
+        .json({ message: "Video removed from saved list", isSaved: false });
+    } else {
+      // Save
+      await User.updateOne(
+        { _id: userId },
+        { $addToSet: { savedVideos: videoId } },
+      );
+      res.status(200).json({ message: "Video saved", isSaved: true });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Get saved videos
+// @route   GET /api/videos/saved
+// @access  Private
+const getSavedVideos = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: "savedVideos",
+      populate: {
+        path: "subjectId",
+        select: "title courseId", // select fields needed for link
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user.savedVideos);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 module.exports = {
   getCourses,
   getCourse,
   getSubject,
   getVideos,
   purchaseSubjects,
+  toggleSavedVideo,
+  getSavedVideos,
 };

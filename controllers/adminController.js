@@ -279,9 +279,16 @@ const createVideo = async (req, res) => {
 // @access  Private/Admin
 const getAllVideos = async (req, res) => {
   try {
-    const videos = await Video.find({}).populate("subjectId", "title");
+    console.log("GET /api/admin/videos hit");
+    const videos = await Video.find({}).populate({
+      path: "subjectId",
+      select: "title courseId",
+      populate: { path: "courseId", select: "title" },
+    });
+    console.log(`Found ${videos.length} videos`);
     res.json(videos);
   } catch (error) {
+    console.error("Error in getAllVideos:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
