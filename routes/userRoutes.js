@@ -8,9 +8,11 @@ const {
   purchaseSubjects,
   toggleSavedVideo,
   getSavedVideos,
+  getFreeVideos,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 
+router.get("/free-videos", getFreeVideos);
 router.get("/courses", getCourses);
 router.get("/courses/:id", getCourse);
 router.get("/subjects/:id", getSubject);

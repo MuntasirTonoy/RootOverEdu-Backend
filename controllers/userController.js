@@ -253,6 +253,21 @@ const getSavedVideos = async (req, res) => {
   }
 };
 
+// @desc    Get all free videos
+// @route   GET /api/free-videos
+// @access  Public
+const getFreeVideos = async (req, res) => {
+  try {
+    const videos = await Video.find({ isFree: true }).populate({
+      path: "subjectId",
+      select: "title courseId",
+    });
+    res.status(200).json(videos);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 module.exports = {
   getCourses,
   getCourse,
@@ -261,4 +276,5 @@ module.exports = {
   purchaseSubjects,
   toggleSavedVideo,
   getSavedVideos,
+  getFreeVideos,
 };
