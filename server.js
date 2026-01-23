@@ -42,6 +42,23 @@ app.get("/", (req, res) => {
   res.send("EdTech API is running...");
 });
 
+// Temporary Debug Route (Remove after fixing)
+app.get("/debug-env", (req, res) => {
+  const envVar = process.env.FIREBASE_SERVICE_ACCOUNT;
+  res.json({
+    message: "Debug Info",
+    hasFirebaseKey: !!envVar,
+    keyLength: envVar ? envVar.length : 0,
+    first50Chars: envVar ? envVar.substring(0, 50) : "N/A",
+    nodeEnv: process.env.NODE_ENV,
+    parsed: envVar
+      ? envVar.startsWith("{")
+        ? "Looks like JSON"
+        : "Not JSON"
+      : "N/A",
+  });
+});
+
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
