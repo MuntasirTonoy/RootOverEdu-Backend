@@ -43,24 +43,30 @@ app.get("/", (req, res) => {
 });
 
 // Temporary Debug Route (Remove after fixing)
-// Temporary Debug Route (Remove after fixing)
 app.get("/debug-env", (req, res) => {
   const envVar = process.env.FIREBASE_SERVICE_ACCOUNT;
   let parsed = null;
   let parseError = null;
+  let isBase64 = false;
 
   if (envVar) {
     try {
-      parsed = JSON.parse(envVar);
+      let rawConfig = envVar;
+      if (!rawConfig.trim().startsWith("{")) {
+        isBase64 = true;
+        rawConfig = Buffer.from(rawConfig, "base64").toString("utf8");
+      }
+      parsed = JSON.parse(rawConfig);
     } catch (e) {
       parseError = e.message;
     }
   }
 
   res.json({
-    message: "Debug Info v2",
+    message: "Debug Info v3 (Base64 Support)",
     hasFirebaseKey: !!envVar,
     keyLength: envVar ? envVar.length : 0,
+    isBase64: isBase64,
     parseSuccess: !!parsed,
     parseError: parseError,
     // Check if private_key exists and has correct format (newline handling)

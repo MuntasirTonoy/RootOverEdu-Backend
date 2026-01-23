@@ -5,12 +5,17 @@ let serviceAccount;
 // Try to get service account from Env Var (Production/Vercel)
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
-    console.log("Checking FIREBASE_SERVICE_ACCOUNT...");
-    console.log(
-      `Length of env var: ${process.env.FIREBASE_SERVICE_ACCOUNT.length}`,
-    );
+    let rawConfig = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    // Check if it's Base64 encoded (doesn't start with '{')
+    if (!rawConfig.trim().startsWith("{")) {
+      console.log("Checking FIREBASE_SERVICE_ACCOUNT... (Base64 detected)");
+      rawConfig = Buffer.from(rawConfig, "base64").toString("utf8");
+    } else {
+      console.log("Checking FIREBASE_SERVICE_ACCOUNT... (JSON detected)");
+    }
+
+    serviceAccount = JSON.parse(rawConfig);
     console.log(
       "✅ Firebase Admin: Using credentials from FIREBASE_SERVICE_ACCOUNT env var",
     );
