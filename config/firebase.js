@@ -5,6 +5,11 @@ let serviceAccount;
 // Try to get service account from Env Var (Production/Vercel)
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
+    console.log("Checking FIREBASE_SERVICE_ACCOUNT...");
+    console.log(
+      `Length of env var: ${process.env.FIREBASE_SERVICE_ACCOUNT.length}`,
+    );
+
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     console.log(
       "✅ Firebase Admin: Using credentials from FIREBASE_SERVICE_ACCOUNT env var",
@@ -13,6 +18,11 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     console.error(
       "❌ Failed to parse FIREBASE_SERVICE_ACCOUNT env var",
       e.message,
+    );
+    // Log the first few characters to see if it looks like JSON
+    console.error(
+      "First 50 chars:",
+      process.env.FIREBASE_SERVICE_ACCOUNT.substring(0, 50),
     );
   }
 }
