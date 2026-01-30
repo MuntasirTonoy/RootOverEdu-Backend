@@ -44,4 +44,7 @@ router.delete("/video/:id", deleteVideo);
 router.get("/users", getAllUsers);
 router.put("/user/:id/role", updateUserRole);
 
+const { updateSiteConfig } = require("../controllers/siteConfigController");
+router.post("/config", updateSiteConfig);
+
 module.exports = router;

@@ -208,8 +208,25 @@ const createSubject = async (req, res) => {
 // @access  Private/Admin
 const getAllSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find({}).populate("courseId", "title");
-    res.json(subjects);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await Subject.countDocuments();
+    const subjects = await Subject.find({})
+      .populate("courseId", "title")
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      data: subjects,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
@@ -306,13 +323,28 @@ const createVideo = async (req, res) => {
 // @access  Private/Admin
 const getAllVideos = async (req, res) => {
   try {
-    console.log("GET /api/admin/videos hit");
-    const videos = await Video.find({}).populate({
-      path: "subjectId",
-      populate: { path: "courseId" },
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await Video.countDocuments();
+    const videos = await Video.find({})
+      .populate({
+        path: "subjectId",
+        populate: { path: "courseId" },
+      })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      data: videos,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
     });
-    console.log(`Found ${videos.length} videos`);
-    res.json(videos);
   } catch (error) {
     console.error("Error in getAllVideos:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -371,8 +403,36 @@ const deleteVideo = async (req, res) => {
 // @access  Private/Admin
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({});
-    res.json(users);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("-password")
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      data: users,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }

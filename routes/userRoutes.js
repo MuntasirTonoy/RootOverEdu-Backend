@@ -21,4 +21,7 @@ router.post("/purchase", protect, purchaseSubjects);
 router.post("/save-video", protect, toggleSavedVideo);
 router.get("/saved-videos", protect, getSavedVideos);
 
+const { getSiteConfig } = require("../controllers/siteConfigController");
+router.get("/config/:key", getSiteConfig);
+
 module.exports = router;
