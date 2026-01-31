@@ -2,6 +2,7 @@ const Course = require("../models/Course");
 const Subject = require("../models/Subject");
 const Video = require("../models/Video");
 const User = require("../models/User");
+const EditLog = require("../models/EditLog");
 
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
@@ -388,7 +389,28 @@ const deleteVideo = async (req, res) => {
     const video = await Video.findById(req.params.id);
 
     if (video) {
+      const editLogId = video.editLogId;
       await video.deleteOne();
+
+      // If video was part of an edit log, update the log
+      if (editLogId) {
+        const editLog = await EditLog.findById(editLogId);
+        if (editLog) {
+          // Remove the video ID from videoIds array
+          editLog.videoIds = editLog.videoIds.filter(
+            (vId) => vId.toString() !== req.params.id,
+          );
+
+          if (editLog.videoIds.length === 0) {
+            // Delete edit log if no videos left
+            await editLog.deleteOne();
+          } else {
+            // Save updated edit log
+            await editLog.save();
+          }
+        }
+      }
+
       res.json({ message: "Video removed" });
     } else {
       res.status(404).json({ message: "Video not found" });
@@ -457,6 +479,170 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+// @desc    Create batch videos and edit log
+// @route   POST /api/admin/video/batch
+// @access  Private/Admin
+const createBatchVideos = async (req, res) => {
+  const { chapterName, department, yearLevel, subjectId, videos } = req.body;
+  console.log("Received Batch Upload Request:", {
+    chapterName,
+    department,
+    yearLevel,
+    subjectId,
+    videoCount: videos?.length,
+  });
+
+  if (
+    !chapterName ||
+    !department ||
+    !yearLevel ||
+    !subjectId ||
+    !videos ||
+    !Array.isArray(videos)
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Please provide all required fields" });
+  }
+
+  try {
+    // 1. Create EditLog
+    console.log("Attempting to create EditLog with:", {
+      chapterName,
+      department,
+      yearLevel,
+      subjectId,
+    });
+    const editLog = await EditLog.create({
+      chapterName,
+      department,
+      yearLevel,
+      subjectId,
+      videoIds: [], // Will populate after creating videos
+    });
+    console.log("EditLog created successfully:", editLog._id);
+
+    const createdVideoIds = [];
+
+    // 2. Create Videos with editLogId
+    console.log(`Creating ${videos.length} videos...`);
+    for (const videoData of videos) {
+      const video = await Video.create({
+        ...videoData,
+        subjectId,
+        chapterName,
+        editLogId: editLog._id,
+      });
+      createdVideoIds.push(video._id);
+    }
+    console.log("Videos created. IDs:", createdVideoIds);
+
+    // 3. Update EditLog with videoIds
+    editLog.videoIds = createdVideoIds;
+    await editLog.save();
+    console.log("EditLog updated with video IDs.");
+
+    res.status(201).json({ editLog, message: "Batch upload successful" });
+  } catch (error) {
+    console.error("Error in createBatchVideos:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Get EditLog by ID
+// @route   GET /api/admin/edit-log/:id
+// @access  Private/Admin
+const getEditLogById = async (req, res) => {
+  try {
+    const editLog = await EditLog.findById(req.params.id)
+      .populate("subjectId", "title code") // Populate subject details if needed
+      .populate("videoIds"); // Populate video details
+
+    if (editLog) {
+      res.json(editLog);
+    } else {
+      res.status(404).json({ message: "Edit Log not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Update EditLog and associated Videos
+// @route   PUT /api/admin/edit-log/:id
+// @access  Private/Admin
+const updateEditLog = async (req, res) => {
+  try {
+    const editLog = await EditLog.findById(req.params.id);
+
+    if (!editLog) {
+      return res.status(404).json({ message: "Edit Log not found" });
+    }
+
+    // Update EditLog fields
+    editLog.chapterName = req.body.chapterName || editLog.chapterName;
+    editLog.department = req.body.department || editLog.department;
+    editLog.yearLevel = req.body.yearLevel || editLog.yearLevel;
+    editLog.subjectId = req.body.subjectId || editLog.subjectId;
+
+    // Handle videos
+    if (req.body.videos && Array.isArray(req.body.videos)) {
+      const updatedVideoIds = [];
+
+      for (const videoData of req.body.videos) {
+        if (videoData._id) {
+          // Update existing video
+          await Video.findByIdAndUpdate(videoData._id, {
+            ...videoData,
+            chapterName: editLog.chapterName,
+            subjectId: editLog.subjectId,
+            editLogId: editLog._id,
+          });
+          updatedVideoIds.push(videoData._id);
+        } else {
+          // Create new video (if added during edit)
+          const newVideo = await Video.create({
+            ...videoData,
+            subjectId: editLog.subjectId,
+            chapterName: editLog.chapterName,
+            editLogId: editLog._id,
+          });
+          updatedVideoIds.push(newVideo._id);
+        }
+      }
+
+      // Identify and delete removed videos?
+      // Current logic strictly adds/updates. If we want to support deletion:
+      // We would compare editLog.videoIds with the IDs in req.body.videos and delete the missing ones.
+      // For now, let's assume we just update/add as per typical "save" behavior unless user explicitly deletes from UI (which usually calls specific delete endpoint).
+      // But for a batch update, it's safer to sync the list.
+
+      const incomingIds = req.body.videos
+        .filter((v) => v._id)
+        .map((v) => v._id);
+      const videosToDelete = editLog.videoIds.filter(
+        (id) => !incomingIds.includes(id.toString()),
+      );
+
+      if (videosToDelete.length > 0) {
+        await Video.deleteMany({ _id: { $in: videosToDelete } });
+      }
+
+      editLog.videoIds = updatedVideoIds;
+
+      if (editLog.videoIds.length === 0) {
+        await editLog.deleteOne();
+        return res.json({ message: "Edit log deleted as it has no videos" });
+      }
+    }
+
+    const updatedEditLog = await editLog.save();
+    res.json(updatedEditLog);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 module.exports = {
   createCourse,
   createSubject,
@@ -473,4 +659,7 @@ module.exports = {
   deleteVideo,
   getAllUsers,
   updateUserRole,
+  createBatchVideos,
+  getEditLogById,
+  updateEditLog,
 };

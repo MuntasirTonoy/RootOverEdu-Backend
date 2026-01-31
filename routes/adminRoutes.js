@@ -16,6 +16,9 @@ const {
   deleteVideo,
   getAllUsers,
   updateUserRole,
+  createBatchVideos,
+  getEditLogById,
+  updateEditLog,
 } = require("../controllers/adminController");
 const { protect, verifyAdmin } = require("../middleware/authMiddleware");
 
@@ -36,10 +39,14 @@ router.get("/subjects", getAllSubjects);
 router.put("/subject/:id", updateSubject);
 router.delete("/subject/:id", deleteSubject);
 
+router.post("/video/batch", createBatchVideos);
 router.post("/video", createVideo);
 router.get("/videos", getAllVideos);
 router.put("/video/:id", updateVideo);
 router.delete("/video/:id", deleteVideo);
+
+router.get("/edit-log/:id", getEditLogById);
+router.put("/edit-log/:id", updateEditLog);
 
 router.get("/users", getAllUsers);
 router.put("/user/:id/role", updateUserRole);

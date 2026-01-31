@@ -35,6 +35,10 @@ const videoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    editLogId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EditLog",
+    },
   },
   {
     timestamps: true,
