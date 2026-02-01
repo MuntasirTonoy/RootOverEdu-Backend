@@ -19,8 +19,12 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String, // Predefined avatar string/ID selected by user
-      default: "avatar-1", // Default avatar
+      default: "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix", // Default avatar URL
     },
+    institution: { type: String, default: "" },
+    mobile: { type: String, default: "" },
+    gender: { type: String, default: "" },
+    dateOfBirth: { type: String, default: "" },
     role: {
       type: String,
       enum: ["user", "admin"],

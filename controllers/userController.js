@@ -268,6 +268,43 @@ const getFreeVideos = async (req, res) => {
   }
 };
 
+// @desc    Update user profile
+// @route   PATCH /api/user/profile
+// @access  Private
+const updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.name = req.body.displayName || user.name;
+    user.avatar = req.body.avatar || user.avatar;
+    user.institution = req.body.institution || user.institution;
+    user.mobile = req.body.mobile || user.mobile;
+    user.gender = req.body.gender || user.gender;
+    user.dateOfBirth = req.body.dateOfBirth || user.dateOfBirth;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      avatar: updatedUser.avatar,
+      institution: updatedUser.institution,
+      mobile: updatedUser.mobile,
+      gender: updatedUser.gender,
+      dateOfBirth: updatedUser.dateOfBirth,
+      role: updatedUser.role,
+      token: req.headers.authorization.split(" ")[1], // Return same token
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 module.exports = {
   getCourses,
   getCourse,
@@ -277,4 +314,5 @@ module.exports = {
   toggleSavedVideo,
   getSavedVideos,
   getFreeVideos,
+  updateUserProfile,
 };

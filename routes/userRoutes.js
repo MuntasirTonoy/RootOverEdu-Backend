@@ -9,6 +9,7 @@ const {
   toggleSavedVideo,
   getSavedVideos,
   getFreeVideos,
+  updateUserProfile,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -20,6 +21,7 @@ router.get("/videos/:subjectId", protect, getVideos);
 router.post("/purchase", protect, purchaseSubjects);
 router.post("/save-video", protect, toggleSavedVideo);
 router.get("/saved-videos", protect, getSavedVideos);
+router.patch("/profile", protect, updateUserProfile);
 
 const { getSiteConfig } = require("../controllers/siteConfigController");
 router.get("/config/:key", getSiteConfig);
