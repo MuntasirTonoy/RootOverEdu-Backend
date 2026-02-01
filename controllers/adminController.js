@@ -643,6 +643,34 @@ const updateEditLog = async (req, res) => {
   }
 };
 
+const cloudinary = require("../config/cloudinary");
+
+// @desc    Delete image from Cloudinary
+// @route   POST /api/admin/upload/delete-image
+// @access  Private/Admin
+const deleteImage = async (req, res) => {
+  const { publicId } = req.body;
+
+  if (!publicId) {
+    return res.status(400).json({ message: "No public ID provided" });
+  }
+
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    if (result.result === "ok" || result.result === "not found") {
+      res.json({ message: "Image deleted successfully" });
+    } else {
+      console.error("Cloudinary Delete Error:", result);
+      res
+        .status(500)
+        .json({ message: "Failed to delete image", error: result });
+    }
+  } catch (error) {
+    console.error("Cloudinary Delete Exception:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 module.exports = {
   createCourse,
   createSubject,
@@ -662,4 +690,5 @@ module.exports = {
   createBatchVideos,
   getEditLogById,
   updateEditLog,
+  deleteImage,
 };

@@ -19,6 +19,7 @@ const {
   createBatchVideos,
   getEditLogById,
   updateEditLog,
+  deleteImage,
 } = require("../controllers/adminController");
 const { protect, verifyAdmin } = require("../middleware/authMiddleware");
 
@@ -53,5 +54,8 @@ router.put("/user/:id/role", updateUserRole);
 
 const { updateSiteConfig } = require("../controllers/siteConfigController");
 router.post("/config", updateSiteConfig);
+
+// Cloudinary delete
+router.post("/upload/delete-image", deleteImage);
 
 module.exports = router;
