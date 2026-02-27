@@ -16,6 +16,7 @@ const {
   deleteVideo,
   getAllUsers,
   updateUserRole,
+  updateUserBan,
   createBatchVideos,
   getEditLogById,
   updateEditLog,
@@ -51,6 +52,7 @@ router.put("/edit-log/:id", updateEditLog);
 
 router.get("/users", getAllUsers);
 router.put("/user/:id/role", updateUserRole);
+router.put("/user/:id/ban", updateUserBan);
 
 const { updateSiteConfig } = require("../controllers/siteConfigController");
 router.post("/config", updateSiteConfig);

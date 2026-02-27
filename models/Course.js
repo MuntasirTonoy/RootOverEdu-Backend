@@ -16,7 +16,10 @@ const courseSchema = new mongoose.Schema(
     },
     thumbnail: {
       type: String,
-      required: true, // URL from Cloudinary
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
     },
     subjects: [
       {

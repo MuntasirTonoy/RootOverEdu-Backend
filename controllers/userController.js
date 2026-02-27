@@ -11,7 +11,9 @@ const User = require("../models/User");
 // @access  Public
 const getCourses = async (req, res) => {
   try {
-    const rawCourses = await Course.find().populate("subjects.subjectId");
+    const rawCourses = await Course.find({
+      isPublished: { $ne: false },
+    }).populate("subjects.subjectId");
 
     // Transform to include code from populated subject
     const courses = rawCourses.map((course) => {

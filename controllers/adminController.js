@@ -31,7 +31,8 @@ const getDashboardStats = async (req, res) => {
 // @route   POST /api/admin/course
 // @access  Private/Admin
 const createCourse = async (req, res) => {
-  const { title, department, yearLevel, thumbnail, subjects } = req.body;
+  const { title, department, yearLevel, thumbnail, subjects, isPublished } =
+    req.body;
 
   if (!title || !department || !yearLevel || !thumbnail) {
     return res.status(400).json({ message: "Please provide all fields" });
@@ -44,6 +45,7 @@ const createCourse = async (req, res) => {
       department,
       yearLevel,
       thumbnail,
+      isPublished: isPublished || false,
       subjects: subjects || [],
     });
 
@@ -97,6 +99,9 @@ const updateCourse = async (req, res) => {
       course.department = req.body.department || course.department;
       course.yearLevel = req.body.yearLevel || course.yearLevel;
       course.thumbnail = req.body.thumbnail || course.thumbnail;
+      if (req.body.isPublished !== undefined) {
+        course.isPublished = req.body.isPublished;
+      }
 
       if (req.body.subjects) {
         console.log("Updating subjects:", req.body.subjects.length);
@@ -432,10 +437,11 @@ const getAllUsers = async (req, res) => {
 
     let query = {};
     if (search) {
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query = {
         $or: [
-          { name: { $regex: search, $options: "i" } },
-          { email: { $regex: search, $options: "i" } },
+          { name: { $regex: new RegExp(safeSearch, "i") } },
+          { email: { $regex: new RegExp(safeSearch, "i") } },
         ],
       };
     }
@@ -469,6 +475,25 @@ const updateUserRole = async (req, res) => {
 
     if (user) {
       user.role = req.body.role;
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// @desc    Update user ban status
+// @route   PUT /api/admin/user/:id/ban
+// @access  Private/Admin
+const updateUserBan = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      user.isBanned = req.body.isBanned;
       const updatedUser = await user.save();
       res.json(updatedUser);
     } else {
@@ -687,6 +712,7 @@ module.exports = {
   deleteVideo,
   getAllUsers,
   updateUserRole,
+  updateUserBan,
   createBatchVideos,
   getEditLogById,
   updateEditLog,
