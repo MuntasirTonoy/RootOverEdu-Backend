@@ -21,6 +21,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://rootover.vercel.app",
+      "https://rootover.site",
+      "https://www.rootover.site",
       /\.vercel\.app$/, // Allow all Vercel preview/deployment URLs
     ],
     credentials: true,
