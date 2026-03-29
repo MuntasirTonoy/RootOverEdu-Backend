@@ -1,8 +1,12 @@
 # Root Over Education Backend
 
-**Version 2A.26**
+**Version 2A.27**
 
 This is the Express.js / MongoDB backend for the Root Over Education e-learning platform.
+
+## What's New in Version 2A.27
+
+- **Domain Migration**: Updated frontend domain CORS logic and headers to support requests migrating from `rootover.vercel.app` to the new `rootover.site` frontend endpoint.
 
 ## What's New in Version 2A.26
 
