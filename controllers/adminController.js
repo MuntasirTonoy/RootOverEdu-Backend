@@ -333,8 +333,24 @@ const getAllVideos = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const total = await Video.countDocuments();
-    const videos = await Video.find({})
+    const { department, yearLevel, subjectId } = req.query;
+
+    let videoQuery = {};
+
+    if (subjectId) {
+      videoQuery.subjectId = subjectId;
+    } else if (department || yearLevel) {
+      let subjectQuery = {};
+      if (department) subjectQuery.department = department;
+      if (yearLevel) subjectQuery.yearLevel = yearLevel;
+      
+      const subjects = await Subject.find(subjectQuery).select('_id');
+      const subjectIds = subjects.map(s => s._id);
+      videoQuery.subjectId = { $in: subjectIds };
+    }
+
+    const total = await Video.countDocuments(videoQuery);
+    const videos = await Video.find(videoQuery)
       .populate({
         path: "subjectId",
         populate: { path: "courseId" },
